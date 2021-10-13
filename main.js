@@ -3,54 +3,27 @@ const taskList = document.querySelector('#items');
 const filter = document.querySelector('#filter');
 const cardContainer = document.querySelector('#main');
 
-form.addEventListener('submit', addItem);
-filter.addEventListener('keyup', filterTask);
-taskList.addEventListener('click', removeTask);
+let data = [];
+loadData();
 
-function addItem(evt) {
+form.addEventListener('submit', function (evt) {
   evt.preventDefault();
   const newItemInput = document.querySelector('#newItemText');
   const newItemText = newItemInput.value;
-  const newElementList = document.createElement('li');
-  const newBtnDelete = document.createElement('button');
-
-  createElementList(newBtnDelete, newElementList, newItemText);
+  const id = generateId();
 
   if (newItemInput.value == '') {
     alert('Введите название задачи');
   } else {
-    taskList.insertAdjacentElement('afterbegin', newElementList);
+    if (saveData(newItemText)) {
+      createElementList(id, newItemText);
+    }
     newItemInput.value = '';
     watchingNumberTasks();
   }
-}
+});
 
-function createElementList(button, elementList, itemText) {
-  button.className = 'btn btn-light btn-sm float-right';
-  button.setAttribute('data-action', 'delete');
-  button.setAttribute('type', 'button');
-  button.innerText = 'Удалить';
-
-  elementList.className = 'list-group-item';
-  elementList.insertAdjacentHTML('afterbegin', itemText);
-  elementList.insertAdjacentElement('beforeend', button);
-}
-
-function removeTask(evt) {
-  const target = evt.target;
-
-  if (
-    target.hasAttribute('data-action') &&
-    target.getAttribute('data-action') == 'delete'
-  ) {
-    if (confirm('Удалить задачу?')) {
-      target.parentNode.remove();
-      watchingNumberTasks();
-    }
-  }
-}
-
-function filterTask(evt) {
+filter.addEventListener('keyup', function (evt) {
   let target = evt.target;
   let value = target.value.toLowerCase();
   let tasks = taskList.querySelectorAll('li');
@@ -78,6 +51,52 @@ function filterTask(evt) {
       noticeText.classList.add('hide');
     }
   });
+});
+
+taskList.addEventListener('click', function (evt) {
+  const target = evt.target;
+
+  if (
+    target.hasAttribute('data-action') &&
+    target.getAttribute('data-action') == 'delete'
+  ) {
+    if (confirm('Удалить задачу?')) {
+      let item = target.parentElement;
+      let id = parseInt(item.dataset.id);
+
+      data = data.filter(function (elem) {
+        return elem.id !== id;
+      });
+
+      localStorage.setItem('tasks', JSON.stringify(data));
+      target.parentNode.remove();
+      watchingNumberTasks();
+    }
+  }
+});
+
+function createElementList(id, task) {
+  const elem = document.createElement('li');
+
+  elem.className = 'list-group-item';
+  elem.dataset.id = id;
+  elem.textContent = task;
+
+  const button = createDeletButton();
+
+  elem.append(button);
+  taskList.prepend(elem);
+}
+
+function createDeletButton() {
+  const button = document.createElement('button');
+
+  button.className = 'btn btn-light btn-sm float-right';
+  button.setAttribute('data-action', 'delete');
+  button.setAttribute('type', 'button');
+  button.innerText = 'Удалить';
+
+  return button;
 }
 
 function watchingNumberTasks() {
@@ -94,21 +113,64 @@ function watchingNumberTasks() {
     cardContainer.insertAdjacentHTML('beforeend', nothingYet);
     swichFocus();
   } else {
-    document.querySelector('.nothing-yet').remove();
+    let notice = document.querySelector('.nothing-yet');
+
+    if (!notice) return false;
+
+    notice.remove();
   }
 }
-watchingNumberTasks();
 
 function swichFocus() {
   const btn = document.querySelector('[data-switch-focus]');
 
+  if (!btn) return false;
+
   btn.addEventListener('click', function (evt) {
     evt.preventDefault();
 
-    console.log(231132);
-
-    const fieldInput = document.querySelector('#newItemText');
-    fieldInput.focus();
+    document.querySelector('#newItemText').focus();
   });
 }
+
+function generateId() {
+  let id = 0;
+  if (data.length > 0) {
+    id = data[data.length - 1]['id'];
+  }
+
+  return id + 1;
+}
+
+function saveData(task) {
+  if (!task) {
+    alert('Вы не ввели задачу');
+    return;
+  }
+
+  var id = generateId();
+
+  data.push({
+    id: id,
+    task: task,
+  });
+
+  localStorage.setItem('tasks', JSON.stringify(data));
+
+  return true;
+}
+
+function loadData() {
+  let tasks = localStorage.getItem('tasks');
+
+  if (!tasks) return;
+
+  data = JSON.parse(tasks);
+
+  data.forEach(function (item) {
+    createElementList(item.id, item.task);
+  });
+}
+
 swichFocus();
+watchingNumberTasks();
